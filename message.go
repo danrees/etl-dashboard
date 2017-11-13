@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"github.com/streadway/amqp"
+	"log"
 )
 
 const queueName string = "etl-dashboard"
@@ -16,7 +17,7 @@ type Sender interface {
 }
 
 type Watcher interface {
-	Watch(routingKey string) (<-chan amqp.Delivery,error)
+	Watch(routingKey string) error
 }
 
 type Messenger interface {
@@ -57,12 +58,12 @@ func (rm RabbitMessenger) Send(msg Message, routingKey string, correlationId str
 	)
 }
 
-func (rm RabbitMessenger) Watch(routingKey string) (<-chan amqp.Delivery,error){
+func (rm RabbitMessenger) Watch(routingKey string) error {
 	ch, err := rm.connection.Channel()
 	if err != nil {
-		return nil,err
+		return err
 	}
-	//defer ch.Close()
+	defer ch.Close()
 	err = ch.ExchangeDeclare(
 		rm.exchangeName,
 		"topic",
@@ -73,7 +74,7 @@ func (rm RabbitMessenger) Watch(routingKey string) (<-chan amqp.Delivery,error){
 		nil,
 	)
 	if err != nil {
-		return nil,err
+		return err
 	}
 	q, err := ch.QueueDeclare(
 		queueName,
@@ -84,7 +85,7 @@ func (rm RabbitMessenger) Watch(routingKey string) (<-chan amqp.Delivery,error){
 		nil,
 	)
 	if err != nil {
-		return nil,err
+		return err
 	}
 	err = ch.QueueBind(
 		q.Name,
@@ -94,7 +95,7 @@ func (rm RabbitMessenger) Watch(routingKey string) (<-chan amqp.Delivery,error){
 		nil,
 	)
 	if err != nil {
-		return nil,err
+		return err
 	}
 	msgs, err := ch.Consume(
 		q.Name,
@@ -106,8 +107,13 @@ func (rm RabbitMessenger) Watch(routingKey string) (<-chan amqp.Delivery,error){
 		nil,
 	)
 	if err != nil {
-		return nil,err
+		return err
 	}
 
-	return msgs,nil
+	for d := range msgs {
+		log.Printf("Received message: %s on %s with key %s -> %s", d.Body, d.Exchange, d.RoutingKey, d.CorrelationId)
+		//d.Ack(false)
+	}
+
+	return nil
 }

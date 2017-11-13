@@ -1,14 +1,14 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/streadway/amqp"
 	"log"
 	"math/rand"
-	"time"
 	"net/http"
-	"encoding/json"
+	"time"
 )
 
 func randInt(min int, max int) int {
@@ -49,26 +49,29 @@ func main() {
 	routingKey := "test.key"
 	messenger := NewRabbitMessenger(conn, exchangeName)
 
-	message := Message{Env: map[string]string{
+	/*message := Message{Env: map[string]string{
 		"MAIL_TO":       "daniel.rees@autodata.net",
 		"RELEASE_LEVEL": "20",
-	}}
+	}}*/
 
-	err = messenger.Send(message, routingKey, randomString(32))
+	//Start up the watcher ... I hope
+	go messenger.Watch("#")
 
+	log.Println("[*] Watcher starting, waiting for messages")
 	if err != nil {
-		log.Fatal("Failed to send a message to the queue", err)
+		log.Fatal("Failed to initialize watcher interface", err)
+		panic(err)
 	}
 
 	http.HandleFunc("/message", func(writer http.ResponseWriter, request *http.Request) {
 		var msg Message
 		err := json.NewDecoder(request.Body).Decode(&msg)
 		if err != nil {
-			http.Error(writer,err.Error(),400)
+			http.Error(writer, err.Error(), 400)
 			return
 		}
-		fmt.Fprintf(writer,"Received message: %v",msg)
+		err = messenger.Send(msg, routingKey, randomString(32))
 	})
 
-	http.ListenAndServe(":8002",nil)
+	http.ListenAndServe(":8002", nil)
 }
