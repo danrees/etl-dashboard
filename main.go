@@ -34,6 +34,7 @@ func main() {
 	var rabbitPassword = flag.String("password", "guest", "RabbitMQ password")
 	var rabbitHost = flag.String("host", "localhost", "RabbitMQ host")
 	var rabbitPort = flag.String("port", "5672", "RabbitMQ port")
+	var sendKey = flag.String("routingKey", "", "Routing that is sent on")
 
 	flag.Parse()
 
@@ -46,7 +47,7 @@ func main() {
 	}
 	defer conn.Close()
 	exchangeName := "etl_exchange"
-	routingKey := "test.key"
+	//routingKey := "test.key"
 
 	publishChannel, err := conn.Channel()
 	if err != nil {
@@ -68,10 +69,6 @@ func main() {
 	go subscriber.Watch("#")
 
 	log.Println("[*] Watcher starting, waiting for messages")
-	if err != nil {
-		log.Fatal("Failed to initialize watcher interface", err)
-		panic(err)
-	}
 
 	http.HandleFunc("/message", func(writer http.ResponseWriter, request *http.Request) {
 		var msg Message
@@ -80,7 +77,7 @@ func main() {
 			http.Error(writer, err.Error(), 400)
 			return
 		}
-		err = publisher.Send(msg, routingKey, randomString(32))
+		err = publisher.Send(msg, *sendKey, randomString(32))
 	})
 
 	http.ListenAndServe(":8002", nil)
