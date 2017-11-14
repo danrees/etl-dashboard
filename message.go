@@ -26,21 +26,18 @@ type Messenger interface {
 }
 
 type RabbitMessenger struct {
-	connection   *amqp.Connection
+	channel      *amqp.Channel
 	exchangeName string
 }
 
-func NewRabbitMessenger(conn *amqp.Connection, exchangeName string) Messenger {
-	return RabbitMessenger{connection: conn, exchangeName: exchangeName}
+func NewRabbitMessenger(channel *amqp.Channel, exchangeName string) Messenger {
+	return RabbitMessenger{channel: channel, exchangeName: exchangeName}
 }
 
 func (rm RabbitMessenger) Send(msg Message, routingKey string, correlationId string) error {
 	//TODO: Consider here, you create and dispose of a channel each send ... figure out how to keep the publish channel alive
-	ch, err := rm.connection.Channel()
-	if err != nil {
-		return err
-	}
-	defer ch.Close()
+	ch := rm.channel
+	//defer ch.Close()
 	body, err := json.Marshal(msg)
 	if err != nil {
 		return err
@@ -59,12 +56,9 @@ func (rm RabbitMessenger) Send(msg Message, routingKey string, correlationId str
 }
 
 func (rm RabbitMessenger) Watch(routingKey string) error {
-	ch, err := rm.connection.Channel()
-	if err != nil {
-		return err
-	}
-	defer ch.Close()
-	err = ch.ExchangeDeclare(
+	ch := rm.channel
+
+	err := ch.ExchangeDeclare(
 		rm.exchangeName,
 		"topic",
 		false,
@@ -111,8 +105,8 @@ func (rm RabbitMessenger) Watch(routingKey string) error {
 	}
 
 	for d := range msgs {
+		//TODO: I feel like I should manually ack ... but I couldn't get that to work
 		log.Printf("Received message: %s on %s with key %s -> %s", d.Body, d.Exchange, d.RoutingKey, d.CorrelationId)
-		//d.Ack(false)
 	}
 
 	return nil

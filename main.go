@@ -47,15 +47,25 @@ func main() {
 	defer conn.Close()
 	exchangeName := "etl_exchange"
 	routingKey := "test.key"
-	messenger := NewRabbitMessenger(conn, exchangeName)
 
-	/*message := Message{Env: map[string]string{
-		"MAIL_TO":       "daniel.rees@autodata.net",
-		"RELEASE_LEVEL": "20",
-	}}*/
+	publishChannel, err := conn.Channel()
+	if err != nil {
+		log.Fatal("Unable to create publish channel for rabbitmq", err)
+		panic(err)
+	}
+	defer publishChannel.Close()
+	var publisher Sender = NewRabbitMessenger(publishChannel, exchangeName)
+
+	subscribeChannel, err := conn.Channel()
+	if err != nil {
+		log.Fatal("Unable to create subscribe channel for rabbitmq", err)
+		panic(err)
+	}
+	defer subscribeChannel.Close()
+	var subscriber Watcher = NewRabbitMessenger(subscribeChannel, exchangeName)
 
 	//Start up the watcher ... I hope
-	go messenger.Watch("#")
+	go subscriber.Watch("#")
 
 	log.Println("[*] Watcher starting, waiting for messages")
 	if err != nil {
@@ -70,7 +80,7 @@ func main() {
 			http.Error(writer, err.Error(), 400)
 			return
 		}
-		err = messenger.Send(msg, routingKey, randomString(32))
+		err = publisher.Send(msg, routingKey, randomString(32))
 	})
 
 	http.ListenAndServe(":8002", nil)
