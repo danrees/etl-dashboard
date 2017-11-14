@@ -35,9 +35,8 @@ func NewRabbitMessenger(channel *amqp.Channel, exchangeName string) Messenger {
 }
 
 func (rm RabbitMessenger) Send(msg Message, routingKey string, correlationId string) error {
-	//TODO: Consider here, you create and dispose of a channel each send ... figure out how to keep the publish channel alive
+	//referencing the channel from the owning struct to avoid some refactoring
 	ch := rm.channel
-	//defer ch.Close()
 	body, err := json.Marshal(msg)
 	if err != nil {
 		return err
