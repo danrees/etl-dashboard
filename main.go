@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/gorilla/mux"
 	"github.com/streadway/amqp"
 	"log"
 	"math/rand"
@@ -70,15 +71,25 @@ func main() {
 
 	log.Println("[*] Watcher starting, waiting for messages")
 
-	http.HandleFunc("/message", func(writer http.ResponseWriter, request *http.Request) {
-		var msg Message
-		err := json.NewDecoder(request.Body).Decode(&msg)
-		if err != nil {
-			http.Error(writer, err.Error(), 400)
-			return
-		}
-		err = publisher.Send(msg, *sendKey, randomString(32))
-	})
+	r := mux.NewRouter()
+	r.
+		Methods("POST").
+		Path("/message").
+		HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+			var msg Message
 
-	http.ListenAndServe(":8002", nil)
+			err := json.NewDecoder(request.Body).Decode(&msg)
+			if err != nil {
+				http.Error(writer, err.Error(), 400)
+				return
+			}
+			err = publisher.Send(msg, *sendKey, randomString(32))
+		})
+
+	//etlRouter := r.Path("/etl").Subrouter()
+
+	r.Path("/etl").Methods("POST").HandlerFunc(CreateEtlHandler)
+	r.Methods("GET").Path("/etl/{id}").HandlerFunc(GetEtlHandler)
+
+	http.ListenAndServe(":8002", r)
 }
