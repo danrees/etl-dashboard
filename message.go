@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/streadway/amqp"
 	"log"
+	"time"
 )
 
 const queueName string = "etl-dashboard"
@@ -50,6 +51,7 @@ func (rm RabbitMessenger) Send(msg Message, routingKey string, correlationId str
 			ContentType:   "application/json",
 			CorrelationId: correlationId,
 			Body:          body,
+			Timestamp:     time.Now(),
 		},
 	)
 }
@@ -104,8 +106,9 @@ func (rm RabbitMessenger) Watch(routingKey string) error {
 	}
 
 	for d := range msgs {
+
 		//TODO: I feel like I should manually ack ... but I couldn't get that to work
-		log.Printf("Received message: %s on %s with key %s -> %s", d.Body, d.Exchange, d.RoutingKey, d.CorrelationId)
+		log.Printf("Received message at [%s]: %s on %s with key %s -> %s", d.Timestamp, d.Body, d.Exchange, d.RoutingKey, d.CorrelationId)
 	}
 
 	return nil
