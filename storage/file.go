@@ -7,12 +7,15 @@ import (
 	"path"
 	"os"
 	"strconv"
+	"sync"
 )
 
 
 type FileStorage struct {
 	storageDirectory string
 }
+
+var mutex = &sync.RWMutex{}
 
 func NewFileStorage(storageDirectory string) (FileStorage) {
 	//Create storage directory if it doesn't already exist
@@ -24,6 +27,9 @@ func NewFileStorage(storageDirectory string) (FileStorage) {
 }
 
 func (fs FileStorage) CreateApplication(app Etl) error {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	log.Print("debug ","Creating application: ", app)
 	marshaledApp,err := json.Marshal(app)
 	if err != nil {
@@ -40,6 +46,8 @@ func (fs FileStorage) CreateApplication(app Etl) error {
 }
 
 func (fs FileStorage) GetEtlApplication(id int64) (*Etl,error) {
+	mutex.RLock()
+	defer mutex.RUnlock()
 	app, err := ioutil.ReadFile(path.Join(fs.storageDirectory,strconv.FormatInt(id, 10) + ".json"))
 	if err != nil {
 		log.Print("error ", "unable to find application with ID ", string(id), err)
