@@ -10,6 +10,9 @@ import (
 	"math/rand"
 	"net/http"
 	"time"
+	"etl-dashboard/storage"
+	"os/user"
+	"path"
 )
 
 func randInt(min int, max int) int {
@@ -31,11 +34,16 @@ func init() {
 }
 
 func main() {
+	usr,err := user.Current()
+	if err != nil {
+		log.Fatal("fatal ", "Unable to retrieve user information ", err)
+	}
 	var rabbitUser = flag.String("user", "guest", "RabbitMQ user name")
 	var rabbitPassword = flag.String("password", "guest", "RabbitMQ password")
 	var rabbitHost = flag.String("host", "localhost", "RabbitMQ host")
 	var rabbitPort = flag.String("port", "5672", "RabbitMQ port")
 	var sendKey = flag.String("routingKey", "", "Routing that is sent on")
+	var dataDir = flag.String("dataDir", path.Join(usr.HomeDir,".etldashboard"), "Directory to save data files")
 
 	flag.Parse()
 
@@ -71,6 +79,8 @@ func main() {
 
 	log.Println("[*] Watcher starting, waiting for messages")
 
+	etlHandler := storage.New(storage.NewFileStorage(*dataDir))
+
 	r := mux.NewRouter()
 	r.
 		Methods("POST").
@@ -88,8 +98,8 @@ func main() {
 
 	//etlRouter := r.Path("/etl").Subrouter()
 
-	r.Path("/etl").Methods("POST").HandlerFunc(CreateEtlHandler)
-	r.Methods("GET").Path("/etl/{id}").HandlerFunc(GetEtlHandler)
+	r.Path("/etl").Methods("POST").HandlerFunc(etlHandler.GetCreateEtlHandler())
+	r.Methods("GET").Path("/etl/{id}").HandlerFunc(etlHandler.GetEtlHandler())
 
 	http.ListenAndServe(":8002", r)
 }
