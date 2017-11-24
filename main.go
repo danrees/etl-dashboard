@@ -13,6 +13,7 @@ import (
 	"etl-dashboard/storage"
 	"os/user"
 	"path"
+	"etl-dashboard/websocket"
 )
 
 func randInt(min int, max int) int {
@@ -43,7 +44,7 @@ func main() {
 	var rabbitHost = flag.String("host", "localhost", "RabbitMQ host")
 	var rabbitPort = flag.String("port", "5672", "RabbitMQ port")
 	var sendKey = flag.String("routingKey", "", "Routing that is sent on")
-	var dataDir = flag.String("dataDir", path.Join(usr.HomeDir,".etldashboard"), "Directory to save data files")
+	var dataDir = flag.String("dataDir", path.Join(usr.HomeDir,".etldashboard","data"), "Directory to save data files")
 
 	flag.Parse()
 
@@ -81,7 +82,14 @@ func main() {
 
 	etlHandler := storage.New(storage.NewFileStorage(*dataDir))
 
+
+	broadcast := make(chan websocket.TestMessage)
+	go websocket.HandleMessages(broadcast)
+
 	r := mux.NewRouter()
+
+	r.HandleFunc("/ws", websocket.GetWebsocketHandler(broadcast))
+
 	r.
 		Methods("POST").
 		Path("/message").
@@ -100,6 +108,6 @@ func main() {
 
 	r.Path("/etl").Methods("POST").HandlerFunc(etlHandler.GetCreateEtlHandler())
 	r.Methods("GET").Path("/etl/{id}").HandlerFunc(etlHandler.GetEtlHandler())
-
+	r.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir("public/"))))
 	http.ListenAndServe(":8002", r)
 }

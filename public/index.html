@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html >
+    <head>
+        <script src="https://unpkg.com/vue@2.1.3/dist/vue.min.js"></script>
+        <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
+        <script src="/app.js"></script>
+    </head>
+    <body>
+        <h1>Index</h1>
+        <main id="app">
+            <div>
+                <input type="text" id="message" placeholder="Enter message">
+                <button id="send-message">send</button>
+            </div>
+            <div>
+                <textarea v-model="messages" id="messages"></textarea>
+            </div>
+        </main>
+    </body>
+</html>
