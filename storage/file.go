@@ -1,15 +1,14 @@
 package storage
 
 import (
-	"log"
 	"encoding/json"
 	"io/ioutil"
-	"path"
+	"log"
 	"os"
+	"path"
 	"strconv"
 	"sync"
 )
-
 
 type FileStorage struct {
 	storageDirectory string
@@ -17,11 +16,11 @@ type FileStorage struct {
 
 var mutex = &sync.RWMutex{}
 
-func NewFileStorage(storageDirectory string) (FileStorage) {
+func NewFileStorage(storageDirectory string) FileStorage {
 	//Create storage directory if it doesn't already exist
-	if _, err := os.Stat(storageDirectory); os.IsNotExist(err){
+	if _, err := os.Stat(storageDirectory); os.IsNotExist(err) {
 		log.Printf("%s does not exist as a directory, it will be created", storageDirectory)
-		os.Mkdir(storageDirectory,0755)
+		os.Mkdir(storageDirectory, 0755)
 	}
 	return FileStorage{storageDirectory: storageDirectory}
 }
@@ -30,58 +29,58 @@ func (fs FileStorage) CreateApplication(app Etl) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	log.Print("debug ","Creating application: ", app)
-	marshaledApp,err := json.Marshal(app)
+	log.Print("debug ", "Creating application: ", app)
+	marshaledApp, err := json.Marshal(app)
 	if err != nil {
 		log.Print("error ", "was unable to marshal app to json ", err)
 		//TODO: Consider wrapping and returning your own error
 		return err
 	}
-	err = ioutil.WriteFile(path.Join(fs.storageDirectory,strconv.FormatInt(app.ID,10) + ".json"), marshaledApp,0644)
+	err = ioutil.WriteFile(path.Join(fs.storageDirectory, strconv.FormatInt(app.ID, 10)+".json"), marshaledApp, 0644)
 	if err != nil {
-		log.Print("error ","unable to write out to filesystem: ",err)
+		log.Print("error ", "unable to write out to filesystem: ", err)
 		return err
 	}
 	return nil
 }
 
-func (fs FileStorage) GetEtlApplication(id int64) (*Etl,error) {
+func (fs FileStorage) GetEtlApplication(id int64) (*Etl, error) {
 	mutex.RLock()
 	defer mutex.RUnlock()
-	app, err := ioutil.ReadFile(path.Join(fs.storageDirectory,strconv.FormatInt(id, 10) + ".json"))
+	app, err := ioutil.ReadFile(path.Join(fs.storageDirectory, strconv.FormatInt(id, 10)+".json"))
 	if err != nil {
 		log.Print("error ", "unable to find application with ID ", string(id), err)
-		return nil,err
+		return nil, err
 	}
 	var etlApp Etl
-	err = json.Unmarshal(app,&etlApp)
-	if err != nil {
-		return nil,err
-	}
-	return &etlApp,nil
-}
-
-func (fs FileStorage) ListEtlApplication() (EtlList, error){
-	mutex.RLock()
-	defer mutex.RUnlock()
-	fileList, err := ioutil.ReadDir(fs.storageDirectory)
-	var etlList = make([]Etl,0,len(fileList))
+	err = json.Unmarshal(app, &etlApp)
 	if err != nil {
 		return nil, err
 	}
-	for _,fl := range fileList {
-		if !fl.IsDir(){
+	return &etlApp, nil
+}
+
+func (fs FileStorage) ListEtlApplication() (EtlList, error) {
+	mutex.RLock()
+	defer mutex.RUnlock()
+	fileList, err := ioutil.ReadDir(fs.storageDirectory)
+	var etlList = make([]Etl, 0, len(fileList))
+	if err != nil {
+		return nil, err
+	}
+	for _, fl := range fileList {
+		if !fl.IsDir() {
 			var foundEtl Etl
-			b,err := ioutil.ReadFile(path.Join(fs.storageDirectory,fl.Name()))
+			b, err := ioutil.ReadFile(path.Join(fs.storageDirectory, fl.Name()))
 			if err != nil {
 				return nil, err
 			}
-			err = json.Unmarshal(b,&foundEtl)
+			err = json.Unmarshal(b, &foundEtl)
 			if err != nil {
 				return nil, err
 			}
-			etlList = append(etlList,foundEtl)
+			etlList = append(etlList, foundEtl)
 		}
 	}
-	return etlList,nil
+	return etlList, nil
 }

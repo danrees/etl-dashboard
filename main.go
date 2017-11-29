@@ -1,22 +1,21 @@
 package main
 
 import (
+	"etl-dashboard/messaging"
+	"etl-dashboard/storage"
+	"etl-dashboard/websocket"
 	"flag"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/streadway/amqp"
 	"log"
 	"net/http"
-	"etl-dashboard/storage"
 	"os/user"
 	"path"
-	"etl-dashboard/websocket"
-	"etl-dashboard/messaging"
 )
 
-
 func main() {
-	usr,err := user.Current()
+	usr, err := user.Current()
 	if err != nil {
 		log.Fatal("fatal ", "Unable to retrieve user information ", err)
 	}
@@ -25,7 +24,7 @@ func main() {
 	var rabbitHost = flag.String("host", "localhost", "RabbitMQ host")
 	var rabbitPort = flag.String("port", "5672", "RabbitMQ port")
 	//var sendKey = flag.String("routingKey", "", "Routing that is sent on")
-	var dataDir = flag.String("dataDir", path.Join(usr.HomeDir,".etldashboard","data"), "Directory to save data files")
+	var dataDir = flag.String("dataDir", path.Join(usr.HomeDir, ".etldashboard", "data"), "Directory to save data files")
 
 	flag.Parse()
 
@@ -61,8 +60,7 @@ func main() {
 
 	log.Println("[*] Watcher starting, waiting for messages")
 
-	etlHandler := storage.New(storage.NewFileStorage(*dataDir),publisher)
-
+	etlHandler := storage.New(storage.NewFileStorage(*dataDir), publisher)
 
 	broadcast := make(chan websocket.TestMessage)
 	go websocket.HandleMessages(broadcast)
@@ -72,18 +70,18 @@ func main() {
 	r.HandleFunc("/ws", websocket.GetWebsocketHandler(broadcast))
 
 	/*r.
-		Methods("POST").
-		Path("/message").
-		HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-			var msg messaging.Message
+	Methods("POST").
+	Path("/message").
+	HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		var msg messaging.Message
 
-			err := json.NewDecoder(request.Body).Decode(&msg)
-			if err != nil {
-				http.Error(writer, err.Error(), 400)
-				return
-			}
-			err = publisher.Send(msg, *sendKey, randomString(32))
-		})*/
+		err := json.NewDecoder(request.Body).Decode(&msg)
+		if err != nil {
+			http.Error(writer, err.Error(), 400)
+			return
+		}
+		err = publisher.Send(msg, *sendKey, randomString(32))
+	})*/
 
 	r.Path("/etl").Methods("POST").HandlerFunc(etlHandler.GetCreateEtlHandler())
 	r.Path("/etl").Methods("GET").HandlerFunc(etlHandler.GetListEtlHandler())

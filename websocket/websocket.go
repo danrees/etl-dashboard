@@ -2,13 +2,13 @@ package websocket
 
 import (
 	"github.com/gorilla/websocket"
-	"net/http"
 	"log"
+	"net/http"
 	"sync"
 )
 
 var upgrader = websocket.Upgrader{
-	ReadBufferSize: 1024,
+	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
 
@@ -16,14 +16,14 @@ var connections = make(map[*websocket.Conn]bool)
 var mutex = sync.Mutex{}
 
 type TestMessage struct {
-	Message string	`json:"msg"`
+	Message string `json:"msg"`
 }
 
-func GetWebsocketHandler(broadcast chan TestMessage) (func(w http.ResponseWriter, r *http.Request)){
+func GetWebsocketHandler(broadcast chan TestMessage) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		conn, err := upgrader.Upgrade(w,r,nil)
+		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			http.Error(w,err.Error(),http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		defer conn.Close()
@@ -34,7 +34,7 @@ func GetWebsocketHandler(broadcast chan TestMessage) (func(w http.ResponseWriter
 			var msg TestMessage
 			err = conn.ReadJSON(&msg)
 			if err != nil {
-				log.Print("ERROR ",err)
+				log.Print("ERROR ", err)
 				break
 			}
 			broadcast <- msg
@@ -42,7 +42,7 @@ func GetWebsocketHandler(broadcast chan TestMessage) (func(w http.ResponseWriter
 	}
 }
 
-func HandleMessages(broadcast chan TestMessage)  {
+func HandleMessages(broadcast chan TestMessage) {
 	for {
 		msg := <-broadcast
 		for client := range connections {
