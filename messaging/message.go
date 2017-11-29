@@ -84,7 +84,7 @@ func (rm RabbitMessenger) Watch(routingKey string) error {
 	}
 	err = ch.QueueBind(
 		q.Name,
-		"#",
+		routingKey,
 		rm.exchangeName,
 		false,
 		nil,
