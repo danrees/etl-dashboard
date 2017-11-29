@@ -1,38 +1,19 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/streadway/amqp"
 	"log"
-	"math/rand"
 	"net/http"
-	"time"
 	"etl-dashboard/storage"
 	"os/user"
 	"path"
 	"etl-dashboard/websocket"
+	"etl-dashboard/messaging"
 )
 
-func randInt(min int, max int) int {
-	return min + rand.Intn(max-min)
-}
-
-func randomString(l int) string {
-	bytes := make([]byte, l)
-
-	for i := 0; i < l; i++ {
-		bytes[i] = byte(randInt(65, 90))
-	}
-
-	return string(bytes)
-}
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
 
 func main() {
 	usr,err := user.Current()
@@ -43,7 +24,7 @@ func main() {
 	var rabbitPassword = flag.String("password", "guest", "RabbitMQ password")
 	var rabbitHost = flag.String("host", "localhost", "RabbitMQ host")
 	var rabbitPort = flag.String("port", "5672", "RabbitMQ port")
-	var sendKey = flag.String("routingKey", "", "Routing that is sent on")
+	//var sendKey = flag.String("routingKey", "", "Routing that is sent on")
 	var dataDir = flag.String("dataDir", path.Join(usr.HomeDir,".etldashboard","data"), "Directory to save data files")
 
 	flag.Parse()
@@ -65,7 +46,7 @@ func main() {
 		panic(err)
 	}
 	defer publishChannel.Close()
-	var publisher Sender = NewRabbitMessenger(publishChannel, exchangeName)
+	var publisher messaging.Sender = messaging.NewRabbitMessenger(publishChannel, exchangeName)
 
 	subscribeChannel, err := conn.Channel()
 	if err != nil {
@@ -73,14 +54,14 @@ func main() {
 		panic(err)
 	}
 	defer subscribeChannel.Close()
-	var subscriber Watcher = NewRabbitMessenger(subscribeChannel, exchangeName)
+	var subscriber messaging.Watcher = messaging.NewRabbitMessenger(subscribeChannel, exchangeName)
 
 	//Start up the watcher ... I hope
 	go subscriber.Watch("#")
 
 	log.Println("[*] Watcher starting, waiting for messages")
 
-	etlHandler := storage.New(storage.NewFileStorage(*dataDir))
+	etlHandler := storage.New(storage.NewFileStorage(*dataDir),publisher)
 
 
 	broadcast := make(chan websocket.TestMessage)
@@ -90,11 +71,11 @@ func main() {
 
 	r.HandleFunc("/ws", websocket.GetWebsocketHandler(broadcast))
 
-	r.
+	/*r.
 		Methods("POST").
 		Path("/message").
 		HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-			var msg Message
+			var msg messaging.Message
 
 			err := json.NewDecoder(request.Body).Decode(&msg)
 			if err != nil {
@@ -102,12 +83,13 @@ func main() {
 				return
 			}
 			err = publisher.Send(msg, *sendKey, randomString(32))
-		})
-
-	//etlRouter := r.Path("/etl").Subrouter()
+		})*/
 
 	r.Path("/etl").Methods("POST").HandlerFunc(etlHandler.GetCreateEtlHandler())
+	r.Path("/etl").Methods("GET").HandlerFunc(etlHandler.GetListEtlHandler())
 	r.Methods("GET").Path("/etl/{id}").HandlerFunc(etlHandler.GetEtlHandler())
+	r.Methods("POST").Path("/etl/{id}/start").HandlerFunc(etlHandler.GetStartEtlHandler())
+
 	r.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir("public/"))))
 	http.ListenAndServe(":8002", r)
 }

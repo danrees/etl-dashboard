@@ -60,3 +60,28 @@ func (fs FileStorage) GetEtlApplication(id int64) (*Etl,error) {
 	}
 	return &etlApp,nil
 }
+
+func (fs FileStorage) ListEtlApplication() (EtlList, error){
+	mutex.RLock()
+	defer mutex.RUnlock()
+	fileList, err := ioutil.ReadDir(fs.storageDirectory)
+	var etlList = make([]Etl,0,len(fileList))
+	if err != nil {
+		return nil, err
+	}
+	for _,fl := range fileList {
+		if !fl.IsDir(){
+			var foundEtl Etl
+			b,err := ioutil.ReadFile(path.Join(fs.storageDirectory,fl.Name()))
+			if err != nil {
+				return nil, err
+			}
+			err = json.Unmarshal(b,&foundEtl)
+			if err != nil {
+				return nil, err
+			}
+			etlList = append(etlList,foundEtl)
+		}
+	}
+	return etlList,nil
+}

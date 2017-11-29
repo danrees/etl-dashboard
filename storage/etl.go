@@ -2,31 +2,53 @@ package storage
 
 import (
 	"encoding/json"
+	"etl-dashboard/messaging"
 	"github.com/gorilla/mux"
 	"log"
+	"math/rand"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 type Etl struct {
-	ID          int64             `json:"id"`
-	Name        string            `json:"name"`
-	StartKey    string            `json:"startKey"`
-	CompleteKey string            `json:"completeKey"`
-	Parameters  map[string]string `json:"parameters"`
+	ID          int64    `json:"id"`
+	Name        string   `json:"name"`
+	StartKey    string   `json:"startKey"`
+	CompleteKey string   `json:"completeKey"`
+	Parameters  []string `json:"parameters"`
 }
 
-
+type EtlList []Etl
 
 type EtlHandler struct {
 	storageEngine Storage
+	sender        messaging.Sender
 }
 
-func New(storage Storage) EtlHandler{
-	return EtlHandler{storage}
+func randInt(min int, max int) int {
+	return min + rand.Intn(max-min)
 }
 
-func (etl *EtlHandler)GetCreateEtlHandler() (func(w http.ResponseWriter, r *http.Request)){
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+func randomString(l int) string {
+	bytes := make([]byte, l)
+
+	for i := 0; i < l; i++ {
+		bytes[i] = byte(randInt(65, 90))
+	}
+
+	return string(bytes)
+}
+
+func New(storage Storage, sender messaging.Sender) EtlHandler {
+	return EtlHandler{storage, sender}
+}
+
+func (etl *EtlHandler) GetCreateEtlHandler() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var applicationEtl Etl
 		err := json.NewDecoder(r.Body).Decode(&applicationEtl)
@@ -38,7 +60,7 @@ func (etl *EtlHandler)GetCreateEtlHandler() (func(w http.ResponseWriter, r *http
 		err = etl.storageEngine.CreateApplication(applicationEtl)
 		if err != nil {
 			log.Print("error ", "Failed to create a new application ", err.Error())
-			http.Error(w,err.Error(),http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json;charset=UTF-8")
@@ -47,7 +69,23 @@ func (etl *EtlHandler)GetCreateEtlHandler() (func(w http.ResponseWriter, r *http
 	}
 }
 
-func (etl *EtlHandler)GetEtlHandler() (func(w http.ResponseWriter, r *http.Request)){
+func (etl *EtlHandler) GetListEtlHandler() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		etlList, err := etl.storageEngine.ListEtlApplication()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json;charset=UTF-8")
+		w.WriteHeader(http.StatusOK)
+		if err = json.NewEncoder(w).Encode(etlList); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+	}
+}
+
+func (etl *EtlHandler) GetEtlHandler() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		idParam, ok := vars["id"]
@@ -57,21 +95,51 @@ func (etl *EtlHandler)GetEtlHandler() (func(w http.ResponseWriter, r *http.Reque
 		}
 		id, err := strconv.ParseInt(idParam, 10, 64)
 		if err != nil {
-			http.Error(w,err.Error(),http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		app, err := etl.storageEngine.GetEtlApplication(id)
 		if err != nil {
-			http.Error(w,err.Error(),http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		w.Header().Set("Content-Type", "application/json;charset=UTF-8")
 		w.WriteHeader(http.StatusOK)
 		if err = json.NewEncoder(w).Encode(app); err != nil {
-			http.Error(w,err.Error(),http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 		return
 	}
 }
 
+func (etl *EtlHandler) GetStartEtlHandler() func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+
+		idParam, ok := vars["id"]
+		if !ok {
+			http.Error(w, "Unable to parse id from url", http.StatusInternalServerError)
+			return
+		}
+		id, err := strconv.ParseInt(idParam, 10, 64)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		app, err := etl.storageEngine.GetEtlApplication(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		msg := messaging.Message{Env: make(map[string]string)}
+		r.ParseForm()
+		//Grab the urlencoded values from the post, for each parameter in the etl app object
+		//put the found value in the message
+		for _, p := range app.Parameters {
+			param := r.Form.Get(p)
+			msg.Env[p] = param
+		}
+		etl.sender.Send(msg, app.StartKey, randomString(32))
+	}
+}
