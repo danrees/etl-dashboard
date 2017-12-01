@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+    <head></head>
+    <body>
+        <h1>ETL List</h1>
+        <ul>
+            {{- range . }}
+            <li>{{ .Name }} <a href="/etl/{{ .ID }}/start">{{ .Name }}-start</a></li>
+{{- end }}
+        </ul>
+    </body>
+</html>

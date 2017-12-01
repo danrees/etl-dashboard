@@ -5,7 +5,7 @@ var ws = new WebSocket("ws://localhost:8002/ws");
 
 ws.addEventListener("message", function(e){
     var msg = JSON.parse(e.data)
-    $("#messages").append(msg.msg + "\n");
+    $("#messages").append(msg + "\n");
 })
 
 $("#send-message").click(function(){

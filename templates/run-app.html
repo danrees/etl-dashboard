@@ -5,10 +5,11 @@
                 src="https://code.jquery.com/jquery-3.2.1.js"
                 integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE="
                 crossorigin="anonymous"></script>
+        <script src="/app.js"></script>
 
     </head>
     <body>
-        <h1>Create Application</h1>
+        <h1>Start Application</h1>
         <h2>{{ .Name }}</h2>
         <form id="save-app">
             {{- range .Parameters }}
@@ -18,6 +19,7 @@
 {{- end }}
             <button type="submit">Save</button>
         </form>
+        <textarea id="messages"></textarea>
         <script type="application/javascript">
             $(document).ready(function() {
                 $("form#save-app").submit(function(e){

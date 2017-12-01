@@ -55,14 +55,15 @@ func main() {
 	defer subscribeChannel.Close()
 	var subscriber messaging.Watcher = messaging.NewRabbitMessenger(subscribeChannel, exchangeName)
 
+	broadcast := make(chan string)
 	//Start up the watcher ... I hope
-	go subscriber.Watch("#")
+	go subscriber.Watch("#",&broadcast)
 
 	log.Println("[*] Watcher starting, waiting for messages")
 
 	etlHandler := storage.New(storage.NewFileStorage(*dataDir), publisher)
 
-	broadcast := make(chan messaging.Message)
+
 	go websocket.HandleMessages(broadcast)
 
 	r := mux.NewRouter()
@@ -82,6 +83,7 @@ func main() {
 		}
 		err = publisher.Send(msg, *sendKey, randomString(32))
 	})*/
+	r.Path("/etl").Methods("GET").HandlerFunc(etlHandler.GetListEtlPageHandler())
 	r.Path("/etl/{id}/start").Methods("GET").HandlerFunc(etlHandler.GetStartEtlPageHandler())
 	r.Path("/api/etl").Methods("POST").HandlerFunc(etlHandler.GetCreateEtlHandler())
 	r.Path("/api/etl").Methods("GET").HandlerFunc(etlHandler.GetListEtlHandler())

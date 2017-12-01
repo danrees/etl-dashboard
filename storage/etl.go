@@ -168,3 +168,18 @@ func (etl *EtlHandler) GetStartEtlPageHandler() func(w http.ResponseWriter, r *h
 		t.Execute(w,app)
 	}
 }
+
+func (etl *EtlHandler) GetListEtlPageHandler() func(w http.ResponseWriter, r *http.Request){
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		t,err := template.ParseFiles("templates/list-etls.html")
+		if err != nil {
+			http.Error(w,err.Error(), http.StatusInternalServerError)
+		}
+		apps, err := etl.storageEngine.ListEtlApplication()
+		if err != nil {
+			http.Error(w,err.Error(), http.StatusInternalServerError)
+		}
+		t.Execute(w,apps)
+	}
+}

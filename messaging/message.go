@@ -5,6 +5,7 @@ import (
 	"github.com/streadway/amqp"
 	"log"
 	"time"
+	"fmt"
 )
 
 const queueName string = "etl-dashboard"
@@ -18,7 +19,8 @@ type Sender interface {
 }
 
 type Watcher interface {
-	Watch(routingKey string) error
+	//TODO: Figure out if this needs to be more robust than string ... probably all the way through
+	Watch(routingKey string,notify *chan string) error
 }
 
 type Messenger interface {
@@ -56,7 +58,7 @@ func (rm RabbitMessenger) Send(msg Message, routingKey string, correlationId str
 	)
 }
 
-func (rm RabbitMessenger) Watch(routingKey string) error {
+func (rm RabbitMessenger) Watch(routingKey string, notify *chan string) error {
 	ch := rm.channel
 
 	err := ch.ExchangeDeclare(
@@ -108,7 +110,9 @@ func (rm RabbitMessenger) Watch(routingKey string) error {
 	for d := range msgs {
 
 		//TODO: I feel like I should manually ack ... but I couldn't get that to work
-		log.Printf("Received message at [%s]: %s on %s with key %s -> %s", d.Timestamp, d.Body, d.Exchange, d.RoutingKey, d.CorrelationId)
+		response := fmt.Sprintf("Received message at [%s]: %s on %s with key %s -> %s", d.Timestamp, d.Body, d.Exchange, d.RoutingKey, d.CorrelationId)
+		log.Print(response)
+		*notify <- response
 	}
 
 	return nil
