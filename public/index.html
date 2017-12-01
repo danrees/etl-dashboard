@@ -1,20 +1,15 @@
 <!DOCTYPE html>
 <html >
     <head>
-        <script src="https://unpkg.com/vue@2.1.3/dist/vue.min.js"></script>
         <script src="https://code.jquery.com/jquery-2.1.1.min.js"></script>
-        <script src="/app.js"></script>
     </head>
     <body>
-        <h1>Index</h1>
+        <h1>Etl Dashboard</h1>
         <main id="app">
-            <div>
-                <input type="text" id="message" placeholder="Enter message">
-                <button id="send-message">send</button>
-            </div>
-            <div>
-                <ul v-model="messages" id="messages"></ul>
-            </div>
+            <ul>
+                <li><a href="/etl">List of applications</a></li>
+                <li><a href="/etl/create">Create New</a></li>
+            </ul>
         </main>
     </body>
 </html>

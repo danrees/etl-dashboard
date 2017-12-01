@@ -34,7 +34,7 @@ func GetWebsocketHandler(broadcast chan string) func(w http.ResponseWriter, r *h
 			var msg string
 			err = conn.ReadJSON(&msg)
 			if err != nil {
-				log.Print("ERROR ", err)
+				log.Print("INFO ", err)
 				break
 			}
 			broadcast <- msg
@@ -49,7 +49,8 @@ func HandleMessages(broadcast chan string) {
 
 			err := client.WriteJSON(msg)
 			if err != nil {
-				log.Print("ERROR ", err)
+				log.Print("ERROR ","websocket -> failed to write: ", msg)
+				log.Print(err.Error())
 				client.Close()
 			}
 		}

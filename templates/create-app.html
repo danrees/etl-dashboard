@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script
+                src="https://code.jquery.com/jquery-3.2.1.js"
+                integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE="
+                crossorigin="anonymous"></script>
+
+    </head>
+    <body>
+        <h1>Create Application</h1>
+
+        <form id="create-app">
+            <label><input type="text" name="id" placeholder="id"></label>
+            <label><input type="text" name="name" placeholder="name"></label>
+            <label><input type="text" name="startKey" placeholder="startKey"></label>
+            <label><input type="text" name="completeKey" placeholder="completeKey"></label>
+            <label><textarea name="parameters" placeholder="parameters"></textarea></label>
+            <button type="submit">Save</button>
+        </form>
+        <ul id="messages"></ul>
+        <script type="application/javascript">
+            $(document).ready(function() {
+                $("form#create-app").submit(function(e){
+                    e.preventDefault();
+                    var saveFormData = {}
+                    $.each($(e.target).serializeArray(), function(i, field){
+                       saveFormData[field.name] = field.value
+                    });
+                    saveFormData['parameters'] = saveFormData['parameters'].split('\n');
+                    $.post("/api/etl", JSON.stringify(saveFormData))
+                            .done(function (data,status){
+                                $("form#create-app").trigger("reset");
+                        console.debug("Posted with status " + status);
+                    })
+                });
+            })
+        </script>
+    </body>
+</html>

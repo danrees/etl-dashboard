@@ -84,6 +84,7 @@ func main() {
 		err = publisher.Send(msg, *sendKey, randomString(32))
 	})*/
 	r.Path("/etl").Methods("GET").HandlerFunc(etlHandler.GetListEtlPageHandler())
+	r.Path("/etl/create").Methods("GET").HandlerFunc(etlHandler.GetCreateEtlPageHandler())
 	r.Path("/etl/{id}/start").Methods("GET").HandlerFunc(etlHandler.GetStartEtlPageHandler())
 	r.Path("/api/etl").Methods("POST").HandlerFunc(etlHandler.GetCreateEtlHandler())
 	r.Path("/api/etl").Methods("GET").HandlerFunc(etlHandler.GetListEtlHandler())
