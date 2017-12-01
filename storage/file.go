@@ -8,27 +8,49 @@ import (
 	"path"
 	"strconv"
 	"sync"
+	"path/filepath"
+	"errors"
 )
 
 type FileStorage struct {
 	storageDirectory string
+	autoId int64
+
 }
 
 var mutex = &sync.RWMutex{}
 
-func NewFileStorage(storageDirectory string) FileStorage {
+
+func NewFileStorage(storageDirectory string) *FileStorage {
 	//Create storage directory if it doesn't already exist
 	if _, err := os.Stat(storageDirectory); os.IsNotExist(err) {
 		log.Printf("%s does not exist as a directory, it will be created", storageDirectory)
 		os.Mkdir(storageDirectory, 0755)
 	}
-	return FileStorage{storageDirectory: storageDirectory}
+	files, err := ioutil.ReadDir(storageDirectory)
+	if err != nil {
+		panic(err)
+	}
+	var maxId int64 = 0
+	for _,file := range files {
+		extension := filepath.Ext(file.Name())
+		id,err := strconv.ParseInt(file.Name()[0:len(file.Name()) - len(extension)],10, 64)
+		if err != nil {
+			continue
+		}
+		if id > maxId {
+			maxId = id
+		}
+	}
+	return &FileStorage{storageDirectory: storageDirectory, autoId:maxId}
 }
 
-func (fs FileStorage) CreateApplication(app Etl) error {
+func (fs *FileStorage) CreateApplication(app Etl) error {
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	fs.autoId = fs.autoId + 1
+	app.ID = fs.autoId
 	log.Print("debug ", "Creating application: ", app)
 	marshaledApp, err := json.Marshal(app)
 	if err != nil {
@@ -44,7 +66,7 @@ func (fs FileStorage) CreateApplication(app Etl) error {
 	return nil
 }
 
-func (fs FileStorage) GetEtlApplication(id int64) (*Etl, error) {
+func (fs *FileStorage) GetEtlApplication(id int64) (*Etl, error) {
 	mutex.RLock()
 	defer mutex.RUnlock()
 	app, err := ioutil.ReadFile(path.Join(fs.storageDirectory, strconv.FormatInt(id, 10)+".json"))
@@ -60,7 +82,7 @@ func (fs FileStorage) GetEtlApplication(id int64) (*Etl, error) {
 	return &etlApp, nil
 }
 
-func (fs FileStorage) ListEtlApplication() (EtlList, error) {
+func (fs *FileStorage) ListEtlApplication() (EtlList, error) {
 	mutex.RLock()
 	defer mutex.RUnlock()
 	fileList, err := ioutil.ReadDir(fs.storageDirectory)
@@ -83,4 +105,8 @@ func (fs FileStorage) ListEtlApplication() (EtlList, error) {
 		}
 	}
 	return etlList, nil
+}
+
+func (fs *FileStorage) DeleteEtlApplication(id int64) error {
+	return errors.New("Unimplemented method")
 }

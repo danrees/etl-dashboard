@@ -13,7 +13,7 @@ import (
 )
 
 type Etl struct {
-	ID          int64    `json:"id"`
+	ID          int64    `json:"id,string"`
 	Name        string   `json:"name"`
 	StartKey    string   `json:"startKey"`
 	CompleteKey string   `json:"completeKey"`
@@ -181,5 +181,17 @@ func (etl *EtlHandler) GetListEtlPageHandler() func(w http.ResponseWriter, r *ht
 			http.Error(w,err.Error(), http.StatusInternalServerError)
 		}
 		t.Execute(w,apps)
+	}
+}
+
+func (etl *EtlHandler) GetCreateEtlPageHandler() func(w http.ResponseWriter, r *http.Request){
+	return func(w http.ResponseWriter, r *http.Request) {
+
+		t,err := template.ParseFiles("templates/create-app.html")
+		if err != nil {
+			http.Error(w,err.Error(), http.StatusInternalServerError)
+		}
+
+		t.Execute(w,nil)
 	}
 }
