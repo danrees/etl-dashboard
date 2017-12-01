@@ -62,7 +62,7 @@ func main() {
 
 	etlHandler := storage.New(storage.NewFileStorage(*dataDir), publisher)
 
-	broadcast := make(chan websocket.TestMessage)
+	broadcast := make(chan messaging.Message)
 	go websocket.HandleMessages(broadcast)
 
 	r := mux.NewRouter()
@@ -82,11 +82,11 @@ func main() {
 		}
 		err = publisher.Send(msg, *sendKey, randomString(32))
 	})*/
-
-	r.Path("/etl").Methods("POST").HandlerFunc(etlHandler.GetCreateEtlHandler())
-	r.Path("/etl").Methods("GET").HandlerFunc(etlHandler.GetListEtlHandler())
-	r.Methods("GET").Path("/etl/{id}").HandlerFunc(etlHandler.GetEtlHandler())
-	r.Methods("POST").Path("/etl/{id}/start").HandlerFunc(etlHandler.GetStartEtlHandler())
+	r.Path("/etl/{id}/start").Methods("GET").HandlerFunc(etlHandler.GetStartEtlPageHandler())
+	r.Path("/api/etl").Methods("POST").HandlerFunc(etlHandler.GetCreateEtlHandler())
+	r.Path("/api/etl").Methods("GET").HandlerFunc(etlHandler.GetListEtlHandler())
+	r.Methods("GET").Path("/api/etl/{id}").HandlerFunc(etlHandler.GetEtlHandler())
+	r.Methods("POST").Path("/api/etl/{id}/start").HandlerFunc(etlHandler.GetStartEtlHandler())
 
 	r.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir("public/"))))
 	http.ListenAndServe(":8002", r)

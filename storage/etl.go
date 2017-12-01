@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+	"html/template"
 )
 
 type Etl struct {
@@ -141,5 +142,29 @@ func (etl *EtlHandler) GetStartEtlHandler() func(w http.ResponseWriter, r *http.
 			msg.Env[p] = param
 		}
 		etl.sender.Send(msg, app.StartKey, randomString(32))
+	}
+}
+
+func (etl *EtlHandler) GetStartEtlPageHandler() func(w http.ResponseWriter, r *http.Request){
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		idParam, ok := vars["id"]
+		if !ok {
+			http.Error(w,"Invalid parameter provided", http.StatusInternalServerError)
+		}
+		id, err := strconv.ParseInt(idParam,10, 64)
+		if err != nil {
+			http.Error(w,err.Error(),http.StatusInternalServerError)
+		}
+
+		t,err := template.ParseFiles("templates/run-app.html")
+		if err != nil {
+			http.Error(w,err.Error(), http.StatusInternalServerError)
+		}
+		app, err := etl.storageEngine.GetEtlApplication(id)
+		if err != nil {
+			http.Error(w,err.Error(), http.StatusInternalServerError)
+		}
+		t.Execute(w,app)
 	}
 }

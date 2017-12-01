@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script
+                src="https://code.jquery.com/jquery-3.2.1.js"
+                integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE="
+                crossorigin="anonymous"></script>
+
+    </head>
+    <body>
+        <h1>Create Application</h1>
+        <h2>{{ .Name }}</h2>
+        <form id="save-app">
+            {{- range .Parameters }}
+            <label>
+                <input type="text" name="{{ . }}" placeholder="{{ . }}">
+            </label>
+{{- end }}
+            <button type="submit">Save</button>
+        </form>
+        <script type="application/javascript">
+            $(document).ready(function() {
+                $("form#save-app").submit(function(e){
+                    e.preventDefault();
+                    $.post("/api/etl/{{ .ID }}/start", $(e.target).serialize())
+                            .done(function (data,status){
+                                $("form#save-app").trigger("reset");
+                        console.debug("Posted with status " + status);
+                    })
+                });
+            })
+        </script>
+    </body>
+</html>

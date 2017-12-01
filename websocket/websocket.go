@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"sync"
+	"etl-dashboard/messaging"
 )
 
 var upgrader = websocket.Upgrader{
@@ -19,7 +20,7 @@ type TestMessage struct {
 	Message string `json:"msg"`
 }
 
-func GetWebsocketHandler(broadcast chan TestMessage) func(w http.ResponseWriter, r *http.Request) {
+func GetWebsocketHandler(broadcast chan messaging.Message) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
@@ -31,7 +32,7 @@ func GetWebsocketHandler(broadcast chan TestMessage) func(w http.ResponseWriter,
 		connections[conn] = true
 		mutex.Unlock()
 		for {
-			var msg TestMessage
+			var msg messaging.Message
 			err = conn.ReadJSON(&msg)
 			if err != nil {
 				log.Print("ERROR ", err)
@@ -42,7 +43,7 @@ func GetWebsocketHandler(broadcast chan TestMessage) func(w http.ResponseWriter,
 	}
 }
 
-func HandleMessages(broadcast chan TestMessage) {
+func HandleMessages(broadcast chan messaging.Message) {
 	for {
 		msg := <-broadcast
 		for client := range connections {
