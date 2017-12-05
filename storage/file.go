@@ -2,24 +2,22 @@ package storage
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 	"sync"
-	"path/filepath"
-	"errors"
 )
 
 type FileStorage struct {
 	storageDirectory string
-	autoId int64
-
+	autoId           int64
 }
 
 var mutex = &sync.RWMutex{}
-
 
 func NewFileStorage(storageDirectory string) *FileStorage {
 	//Create storage directory if it doesn't already exist
@@ -32,9 +30,9 @@ func NewFileStorage(storageDirectory string) *FileStorage {
 		panic(err)
 	}
 	var maxId int64 = 0
-	for _,file := range files {
+	for _, file := range files {
 		extension := filepath.Ext(file.Name())
-		id,err := strconv.ParseInt(file.Name()[0:len(file.Name()) - len(extension)],10, 64)
+		id, err := strconv.ParseInt(file.Name()[0:len(file.Name())-len(extension)], 10, 64)
 		if err != nil {
 			continue
 		}
@@ -42,7 +40,7 @@ func NewFileStorage(storageDirectory string) *FileStorage {
 			maxId = id
 		}
 	}
-	return &FileStorage{storageDirectory: storageDirectory, autoId:maxId}
+	return &FileStorage{storageDirectory: storageDirectory, autoId: maxId}
 }
 
 func (fs *FileStorage) CreateApplication(app Etl) error {

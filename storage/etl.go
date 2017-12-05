@@ -1,15 +1,16 @@
 package storage
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"etl-dashboard/messaging"
-	"github.com/gorilla/mux"
+	"html/template"
 	"log"
-	"math/rand"
 	"net/http"
 	"strconv"
-	"time"
-	"html/template"
+
+	"github.com/gorilla/mux"
 )
 
 type Etl struct {
@@ -27,22 +28,13 @@ type EtlHandler struct {
 	sender        messaging.Sender
 }
 
-func randInt(min int, max int) int {
-	return min + rand.Intn(max-min)
-}
-
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
 func randomString(l int) string {
-	bytes := make([]byte, l)
-
-	for i := 0; i < l; i++ {
-		bytes[i] = byte(randInt(65, 90))
+	buf := make([]byte, l)
+	_, err := rand.Read(buf)
+	if err != nil {
+		panic(err)
 	}
-
-	return string(bytes)
+	return base64.StdEncoding.EncodeToString(buf)
 }
 
 func New(storage Storage, sender messaging.Sender) EtlHandler {
@@ -145,53 +137,53 @@ func (etl *EtlHandler) GetStartEtlHandler() func(w http.ResponseWriter, r *http.
 	}
 }
 
-func (etl *EtlHandler) GetStartEtlPageHandler() func(w http.ResponseWriter, r *http.Request){
+func (etl *EtlHandler) GetStartEtlPageHandler() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
 		idParam, ok := vars["id"]
 		if !ok {
-			http.Error(w,"Invalid parameter provided", http.StatusInternalServerError)
+			http.Error(w, "Invalid parameter provided", http.StatusInternalServerError)
 		}
-		id, err := strconv.ParseInt(idParam,10, 64)
+		id, err := strconv.ParseInt(idParam, 10, 64)
 		if err != nil {
-			http.Error(w,err.Error(),http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		t,err := template.ParseFiles("templates/run-app.html")
+		t, err := template.ParseFiles("templates/run-app.html")
 		if err != nil {
-			http.Error(w,err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		app, err := etl.storageEngine.GetEtlApplication(id)
 		if err != nil {
-			http.Error(w,err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		t.Execute(w,app)
+		t.Execute(w, app)
 	}
 }
 
-func (etl *EtlHandler) GetListEtlPageHandler() func(w http.ResponseWriter, r *http.Request){
+func (etl *EtlHandler) GetListEtlPageHandler() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		t,err := template.ParseFiles("templates/list-etls.html")
+		t, err := template.ParseFiles("templates/list-etls.html")
 		if err != nil {
-			http.Error(w,err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		apps, err := etl.storageEngine.ListEtlApplication()
 		if err != nil {
-			http.Error(w,err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		t.Execute(w,apps)
+		t.Execute(w, apps)
 	}
 }
 
-func (etl *EtlHandler) GetCreateEtlPageHandler() func(w http.ResponseWriter, r *http.Request){
+func (etl *EtlHandler) GetCreateEtlPageHandler() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		t,err := template.ParseFiles("templates/create-app.html")
+		t, err := template.ParseFiles("templates/create-app.html")
 		if err != nil {
-			http.Error(w,err.Error(), http.StatusInternalServerError)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 
-		t.Execute(w,nil)
+		t.Execute(w, nil)
 	}
 }
