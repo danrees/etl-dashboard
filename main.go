@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/gorilla/handlers"
 	"github.com/streadway/amqp"
 	"log"
 	"net/http"
@@ -83,6 +84,7 @@ func main() {
 		}
 		err = publisher.Send(msg, *sendKey, randomString(32))
 	})*/
+
 	r.Path("/etl").Methods("GET").HandlerFunc(etlHandler.GetListEtlPageHandler())
 	r.Path("/etl/create").Methods("GET").HandlerFunc(etlHandler.GetCreateEtlPageHandler())
 	r.Path("/etl/{id}/start").Methods("GET").HandlerFunc(etlHandler.GetStartEtlPageHandler())
@@ -92,5 +94,9 @@ func main() {
 	r.Methods("POST").Path("/api/etl/{id}/start").HandlerFunc(etlHandler.GetStartEtlHandler())
 
 	r.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir("public/"))))
-	http.ListenAndServe(":8002", r)
+
+	corsOrigin := handlers.AllowedOrigins([]string{"*"})
+	corsHeaders := handlers.AllowedHeaders([]string{"content-type"})
+	corsMethods := handlers.AllowedMethods([]string{"GET","POST","PATCH","PUT","DELETE","OPTIONS"})
+	http.ListenAndServe(":8002", handlers.CORS(corsOrigin,corsHeaders,corsMethods)(r))
 }
